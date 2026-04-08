@@ -278,6 +278,13 @@ elif "📧 Emails" in page:
 
 elif "💳 Abonnements" in page:
     st.title("💳 Abonnements")
+
+    st.markdown("#### 🔗 Liens de paiement Stripe")
+    col_s1, col_s2, col_s3 = st.columns(3)
+    col_s1.markdown("**Starter 19€** [Payer](https://buy.stripe.com/8x29ATg98davgCodUg6oo01)")
+    col_s2.markdown("**Pro 39€** [Payer](https://buy.stripe.com/bJe5kD3mm2vRae0g2o6oo02)")
+    col_s3.markdown("**Business 79€** [Payer](https://buy.stripe.com/4gM7sLe102vRcm84jG6oo03)")
+    st.divider()
     clients = get_clients()
     actifs = [c for c in clients if c.get("statut") == "actif"]
     mrr    = sum(c.get("prix_mensuel", 0) or 0 for c in actifs)
