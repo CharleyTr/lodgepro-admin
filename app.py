@@ -44,8 +44,10 @@ with st.sidebar:
     st.divider()
     page = st.radio("Navigation", [
         "📊 Dashboard",
-        "👥 Clients",
+        "👥 Clients Particulier",
+        "🏢 Clients Pro",
         "➕ Nouveau client",
+        "🎯 Prospects démo",
         "📧 Emails",
         "💳 Abonnements",
         "⚙️ Paramètres",
@@ -169,9 +171,9 @@ if "📊 Dashboard" in page:
     else:
         st.info("Aucun client pour l'instant. Créez votre premier client !")
 
-elif "👥 Clients" in page:
-    st.title("👥 Gestion des clients")
-    clients = get_clients()
+elif "👥 Clients Particulier" in page:
+    st.title("👥 Clients Particulier")
+    clients = [c for c in get_clients() if c.get("type_client","particulier") != "pro"]
 
     if not clients:
         st.info("Aucun client.")
@@ -195,6 +197,40 @@ elif "👥 Clients" in page:
                     index=["actif","trial","inactif","suspendu"].index(c.get("statut","trial")),
                     key=f"statut_{c['id']}")
                 if st.button("💾 Mettre à jour", key=f"upd_{c['id']}"):
+                    if update_client(c["id"], {"statut": new_statut}):
+                        st.success("✅ Mis à jour !")
+                        st.rerun()
+
+elif "🏢 Clients Pro" in page:
+    st.title("🏢 Clients Pro — Conciergeries")
+    clients_pro = [c for c in get_clients() if c.get("type_client","particulier") == "pro"]
+
+    if not clients_pro:
+        st.info("Aucun client Pro pour l'instant.")
+        st.markdown("Utilisez **➕ Nouveau client** en choisissant le type **Pro**.")
+    else:
+        for c in clients_pro:
+            statut_color = {"actif":"🟢","trial":"🟡","inactif":"🔴"}.get(c.get("statut",""),"⚪")
+            with st.expander(f"{statut_color} {c.get('nom','?')} — {c.get('email','?')} — {c.get('formule','?')} — {c.get('nb_proprietes',0)} propriétés"):
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.markdown(f"**URL App :** {c.get('app_url','—')}")
+                    st.markdown(f"**Formule :** {c.get('formule','—')}")
+                    st.markdown(f"**Prix :** {c.get('prix_mensuel','—')} €/mois")
+                with col2:
+                    st.markdown(f"**Propriétés :** {c.get('nb_proprietes','—')}")
+                    st.markdown(f"**Statut :** {c.get('statut','—')}")
+                    st.markdown(f"**Créé le :** {str(c.get('created_at',''))[:10]}")
+                with col3:
+                    st.markdown(f"**Contacts :** {c.get('nb_employes',0) or 0} employés")
+                    st.markdown(f"**Notes :** {c.get('notes','—') or '—'}")
+
+                new_statut = st.selectbox("Changer statut",
+                    ["actif","trial","inactif","suspendu"],
+                    index=["actif","trial","inactif","suspendu"].index(c.get("statut","trial"))
+                    if c.get("statut") in ["actif","trial","inactif","suspendu"] else 0,
+                    key=f"statut_pro_{c['id']}")
+                if st.button("💾 Mettre à jour", key=f"upd_pro_{c['id']}"):
                     if update_client(c["id"], {"statut": new_statut}):
                         st.success("✅ Mis à jour !")
                         st.rerun()
@@ -232,7 +268,12 @@ elif "➕ Nouveau client" in page:
             if not nom or not email or not app_url:
                 st.error("Nom, email et URL sont obligatoires.")
             else:
-                prix = {"Starter — 19€/mois": 19, "Pro — 39€/mois": 39, "Business — 79€/mois": 79}.get(formule, 19)
+                prix_map = {
+                    "Starter — 19€/mois": 19, "Pro — 39€/mois": 39, "Business — 79€/mois": 79,
+                    "Starter Pro — 199€/mois": 199, "Business Pro — 399€/mois": 399,
+                    "Enterprise — Sur mesure": 0
+                }
+                prix = prix_map.get(formule, 19)
                 data = {
                     "nom": nom, "email": email, "telephone": tel,
                     "formule": formule.split(" — ")[0],
@@ -242,6 +283,7 @@ elif "➕ Nouveau client" in page:
                     "app_url": app_url,
                     "login": login or email,
                     "notes": notes,
+                    "type_client": type_client,
                     "created_at": datetime.now().isoformat(),
                 }
                 if save_client(data):
@@ -257,6 +299,56 @@ elif "➕ Nouveau client" in page:
                     if envoyer_email and email and app_url:
                         if send_email_bienvenue(email, nom, app_url, login or email, password):
                             st.success(f"📧 Email de bienvenue envoyé à {email}")
+
+elif "🎯 Prospects démo" in page:
+    st.title("🎯 Prospects démo")
+    st.caption("Personnes qui ont accédé à la démo LodgePro et laissé leurs coordonnées.")
+
+    try:
+        r = requests.get(f"{SUPABASE_URL}/rest/v1/prospects_demo?select=*&order=created_at.desc",
+                         headers=HEADERS_SB, timeout=10)
+        prospects = r.json() if r.status_code == 200 else []
+    except:
+        prospects = []
+
+    if not prospects:
+        st.info("Aucun prospect pour l'instant.")
+    else:
+        k1, k2 = st.columns(2)
+        k1.metric("👥 Total prospects", len(prospects))
+        k2.metric("📞 À contacter", sum(1 for p in prospects if not p.get("contacte")))
+
+        st.divider()
+        df_p = pd.DataFrame(prospects)
+        cols_p = ["nom","email","telephone","nb_proprietes","contacte","created_at"]
+        cols_exist_p = [c for c in cols_p if c in df_p.columns]
+        st.dataframe(df_p[cols_exist_p], use_container_width=True, hide_index=True,
+                     column_config={
+                         "nom":           "Nom",
+                         "email":         "Email",
+                         "telephone":     "Téléphone",
+                         "nb_proprietes": "Nb propriétés",
+                         "contacte":      st.column_config.CheckboxColumn("Contacté"),
+                         "created_at":    "Date",
+                     })
+
+        st.divider()
+        st.markdown("**Marquer comme contacté :**")
+        prospect_emails = [p["email"] for p in prospects if not p.get("contacte")]
+        if prospect_emails:
+            email_sel = st.selectbox("Prospect", prospect_emails)
+            if st.button("✅ Marquer comme contacté", type="primary"):
+                try:
+                    requests.patch(
+                        f"{SUPABASE_URL}/rest/v1/prospects_demo?email=eq.{email_sel}",
+                        headers=HEADERS_SB,
+                        json={"contacte": True},
+                        timeout=10
+                    )
+                    st.success("✅ Marqué comme contacté !")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erreur : {e}")
 
 elif "📧 Emails" in page:
     st.title("📧 Emails")
