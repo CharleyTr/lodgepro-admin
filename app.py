@@ -47,6 +47,7 @@ with st.sidebar:
         "👥 Clients Particulier",
         "🏢 Clients Pro",
         "➕ Nouveau client",
+        "🚀 Onboarding Pro",
         "🎯 Prospects démo",
         "📧 Emails",
         "💳 Abonnements",
@@ -299,6 +300,209 @@ elif "➕ Nouveau client" in page:
                     if envoyer_email and email and app_url:
                         if send_email_bienvenue(email, nom, app_url, login or email, password):
                             st.success(f"📧 Email de bienvenue envoyé à {email}")
+
+elif "🚀 Onboarding Pro" in page:
+    st.title("🚀 Onboarding Client Pro")
+    st.caption("Guide pas à pas pour configurer un nouveau client conciergerie.")
+
+    # Sélectionner un client Pro existant ou créer
+    clients_pro = [c for c in get_clients() if c.get("type_client") == "pro"]
+
+    if not clients_pro:
+        st.warning("Aucun client Pro existant. Créez d'abord un client Pro via **➕ Nouveau client**.")
+    else:
+        client_sel = st.selectbox(
+            "Client à configurer",
+            [c["id"] for c in clients_pro],
+            format_func=lambda x: next((f"{c['nom']} — {c.get('formule','?')}" 
+                                         for c in clients_pro if c["id"] == x), "?")
+        )
+        client = next((c for c in clients_pro if c["id"] == client_sel), {})
+
+        st.markdown(f"""
+        <div style='background:#EDE9FE;border-left:4px solid #7C3AED;padding:14px 18px;
+                    border-radius:0 8px 8px 0;margin-bottom:20px'>
+            <b style='color:#7C3AED'>{client.get('nom','')}</b> — 
+            {client.get('formule','?')} — 
+            {client.get('nb_proprietes',0)} propriétés prévues
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Étapes d'onboarding avec état
+        etapes = [
+            ("1", "Compte créé", "email" in client and bool(client.get("email"))),
+            ("2", "URL app configurée", bool(client.get("app_url"))),
+            ("3", "Email de bienvenue envoyé", client.get("statut") in ["actif","trial"]),
+            ("4", "Propriétés importées", int(client.get("nb_proprietes",0) or 0) > 0),
+            ("5", "Employés configurés", False),  # à vérifier
+            ("6", "Formation effectuée", False),
+        ]
+
+        st.markdown("### Progression de l'onboarding")
+        progress = sum(1 for _, _, done in etapes if done) / len(etapes)
+        st.progress(progress, text=f"{int(progress*100)}% complété")
+        st.markdown("")
+
+        for num, label, done in etapes:
+            icon = "✅" if done else "⏳"
+            st.markdown(f"{icon} **Étape {num}** — {label}")
+
+        st.divider()
+
+        # Actions par étape
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            "📧 Bienvenue", "🏠 Propriétés", "👥 Employés", "📋 Templates", "✅ Validation"
+        ])
+
+        with tab1:
+            st.subheader("Email de bienvenue personnalisé")
+            nom_contact = st.text_input("Nom du contact", value=client.get("nom",""))
+            app_url_val = st.text_input("URL de l'app", value=client.get("app_url",""))
+            password_val = st.text_input("Mot de passe provisoire", value="LodgePro2026!")
+            msg_perso = st.text_area("Message personnalisé", height=100,
+                placeholder="Bienvenue dans l'équipe LodgePro ! Votre espace est configuré avec vos X propriétés...")
+
+            if st.button("📧 Envoyer l'email de bienvenue Pro", type="primary",
+                          use_container_width=True):
+                html_pro = f"""
+                <div style="font-family:Arial;max-width:600px;margin:auto">
+                  <div style="background:#0B1F3A;padding:24px;text-align:center;border-radius:8px 8px 0 0">
+                    <h1 style="color:white;margin:0;font-size:20px">LodgePro Pro</h1>
+                    <p style="color:#F0B429;margin:4px 0 0;font-size:13px">Votre espace conciergerie est prêt</p>
+                  </div>
+                  <div style="padding:28px;background:#F8F9FF;line-height:1.7">
+                    <p>Bonjour <b>{nom_contact}</b>,</p>
+                    <p>{msg_perso or "Bienvenue sur LodgePro Pro ! Votre espace est configuré et prêt à l'emploi."}</p>
+                    <div style="background:white;border-radius:8px;padding:20px;margin:20px 0;border:1px solid #E0E0E0">
+                      <p><b>URL de votre espace :</b> <a href="{app_url_val}">{app_url_val}</a></p>
+                      <p><b>Mot de passe provisoire :</b> {password_val}</p>
+                    </div>
+                    <h3>Vos prochaines étapes :</h3>
+                    <ol>
+                      <li>Connectez-vous et changez votre mot de passe</li>
+                      <li>Ajoutez vos propriétés (onglet Propriétés)</li>
+                      <li>Configurez votre équipe ménage (onglet Ménage)</li>
+                      <li>Importez vos réservations existantes</li>
+                    </ol>
+                    <p>Notre équipe reste disponible pour vous accompagner.</p>
+                    <p style="text-align:center;margin-top:24px">
+                      <a href="{app_url_val}" style="background:#7C3AED;color:white;
+                         padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold">
+                        Accéder à mon espace Pro →
+                      </a>
+                    </p>
+                  </div>
+                </div>"""
+
+                if send_email_bienvenue(client.get("email",""), nom_contact,
+                                        app_url_val, client.get("email",""), password_val):
+                    # Envoyer le vrai email personnalisé
+                    if BREVO_API_KEY:
+                        try:
+                            requests.post("https://api.brevo.com/v3/smtp/email",
+                                headers={"api-key": BREVO_API_KEY, "Content-Type": "application/json"},
+                                json={
+                                    "sender": {"name": "LodgePro Pro", "email": "c.trigano@gmail.com"},
+                                    "to": [{"email": client.get("email",""), "name": nom_contact}],
+                                    "subject": "Votre espace LodgePro Pro est prêt !",
+                                    "htmlContent": html_pro,
+                                }, timeout=15)
+                        except: pass
+                    st.success("✅ Email de bienvenue envoyé !")
+                    update_client(client_sel, {"statut": "actif"})
+
+        with tab2:
+            st.subheader("Import des propriétés")
+            st.markdown("**Option 1 — Import CSV**")
+            st.caption("Format attendu : nom, adresse, ville, code_postal, signataire, tel_whatsapp")
+            uploaded = st.file_uploader("Importer un CSV de propriétés", type=["csv"])
+            if uploaded:
+                import io
+                df_import = pd.read_csv(io.StringIO(uploaded.read().decode("utf-8")))
+                st.dataframe(df_import.head(10), use_container_width=True)
+                st.success(f"✅ {len(df_import)} propriétés détectées")
+                if st.button("📥 Importer dans l'app client", type="primary"):
+                    st.info("Fonctionnalité à connecter à l'API Supabase du client.")
+
+            st.divider()
+            st.markdown("**Option 2 — Saisie du nombre de propriétés**")
+            nb_actual = st.number_input("Nombre de propriétés importées", min_value=0,
+                                         value=int(client.get("nb_proprietes",0) or 0))
+            if st.button("💾 Mettre à jour", key="btn_nb_props"):
+                update_client(client_sel, {"nb_proprietes": nb_actual})
+                st.success("✅ Mis à jour !")
+
+        with tab3:
+            st.subheader("Configuration des employés")
+            st.markdown("""
+            Pour configurer les employés de cette conciergerie, voici les étapes dans l'app client :
+            
+            1. Connectez-vous à l'app client
+            2. Allez dans **🧹 Ménage** → onglet **👥 Employés**
+            3. Ajoutez chaque employé avec son taux horaire et contrat
+            
+            **Conseil :** Pour les conciergeries avec 10+ employés, 
+            préparez un tableau Excel avec les colonnes : Prénom, Nom, Email, Téléphone, Taux horaire, Contrat
+            """)
+
+            nb_emp = st.number_input("Nombre d'employés configurés", min_value=0,
+                                      value=int(client.get("nb_employes",0) or 0))
+            if st.button("💾 Enregistrer", key="btn_nb_emp"):
+                update_client(client_sel, {"nb_employes": nb_emp})
+                st.success("✅ Mis à jour !")
+
+        with tab4:
+            st.subheader("Templates de messages")
+            st.markdown("""
+            Les templates de messages sont préconfigurés dans l'app. 
+            
+            Vérifiez avec le client qu'il souhaite personnaliser :
+            - Le message de confirmation de réservation
+            - Le message d'arrivée (J-3)
+            - Le message post-départ avec questionnaire d'avis
+            
+            Ces templates se configurent dans **📧 Messages** → **📝 Modèles msgs** dans l'app client.
+            """)
+            notes_templates = st.text_area("Notes templates", 
+                                            value=client.get("notes","") or "",
+                                            placeholder="Ex: Client veut messages en français et anglais...")
+            if st.button("💾 Sauvegarder les notes", key="btn_notes"):
+                update_client(client_sel, {"notes": notes_templates})
+                st.success("✅ Notes sauvegardées !")
+
+        with tab5:
+            st.subheader("Validation et mise en production")
+            st.markdown("""
+            **Checklist finale avant de valider l'onboarding :**
+            """)
+
+            checks = {
+                "L'email de bienvenue a été envoyé": False,
+                "Le client s'est connecté à son espace": False,
+                "Au moins une propriété est configurée": int(client.get("nb_proprietes",0) or 0) > 0,
+                "Les employés sont configurés": int(client.get("nb_employes",0) or 0) > 0,
+                "Le client a testé l'import d'une réservation": False,
+                "Le client a reçu sa formation": False,
+            }
+
+            all_done = True
+            for check, done in checks.items():
+                col_c, col_s = st.columns([4,1])
+                col_c.markdown(f"{'✅' if done else '⬜'} {check}")
+                if not done:
+                    all_done = False
+
+            st.markdown("")
+            if all_done:
+                st.success("🎉 Onboarding complet ! Le client est prêt.")
+            else:
+                st.warning("⚠️ Des étapes restent à compléter.")
+
+            if st.button("🎉 Valider l'onboarding", type="primary",
+                          use_container_width=True, disabled=not all_done):
+                update_client(client_sel, {"statut": "actif"})
+                st.success("✅ Client validé et actif !")
+                st.balloons()
 
 elif "🎯 Prospects démo" in page:
     st.title("🎯 Prospects démo")
