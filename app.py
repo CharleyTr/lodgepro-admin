@@ -48,6 +48,7 @@ with st.sidebar:
         "🏢 Clients Pro",
         "➕ Nouveau client",
         "🚀 Onboarding Pro",
+        "📬 Demandes Pro",
         "🎯 Prospects démo",
         "📧 Emails",
         "💳 Abonnements",
@@ -601,6 +602,63 @@ elif "💳 Abonnements" in page:
     for f, nb in formules.items():
         prix = PRIX_FORMULE.get(f, 0)
         st.markdown(f"**{f}** : {nb} client(s) × {prix} € = **{nb * prix:,.0f} €/mois**")
+
+elif "📬 Demandes Pro" in page:
+    st.title("📬 Demandes de démo Pro")
+    st.caption("Formulaires soumis depuis pro.lodgepro.eu")
+
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/demandes_demo_pro?select=*&order=created_at.desc",
+            headers=HEADERS_SB, timeout=10
+        )
+        demandes = r.json() if r.status_code == 200 else []
+    except:
+        demandes = []
+
+    if not demandes:
+        st.info("Aucune demande reçue pour l'instant.")
+    else:
+        k1, k2 = st.columns(2)
+        k1.metric("📬 Total demandes", len(demandes))
+        k2.metric("⏳ À traiter", sum(1 for d in demandes if not d.get("traite")))
+
+        st.divider()
+
+        for d in demandes:
+            traite = d.get("traite", False)
+            with st.expander(
+                f"{'✅' if traite else '🔴'} {d.get('nom','?')} — {d.get('societe','?')} — "
+                f"{d.get('nb_proprietes','?')} propriétés — {str(d.get('created_at',''))[:10]}"
+            ):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**Email :** {d.get('email','—')}")
+                    st.markdown(f"**Téléphone :** {d.get('telephone','—') or '—'}")
+                    st.markdown(f"**Société :** {d.get('societe','—') or '—'}")
+                with col2:
+                    st.markdown(f"**Propriétés :** {d.get('nb_proprietes','—')}")
+                    st.markdown(f"**Date :** {str(d.get('created_at',''))[:16]}")
+
+                if d.get('message'):
+                    st.info(f"Message : {d['message']}")
+
+                col_a, col_b, col_c = st.columns(3)
+                with col_a:
+                    if not traite:
+                        if st.button("✅ Marquer traité", key=f"tr_{d['id']}"):
+                            requests.patch(
+                                f"{SUPABASE_URL}/rest/v1/demandes_demo_pro?id=eq.{d['id']}",
+                                headers=HEADERS_SB, json={"traite": True}, timeout=10
+                            )
+                            st.rerun()
+                with col_b:
+                    st.markdown(f"[📧 Répondre](mailto:{d.get('email','')}?subject=Votre demande LodgePro Pro&body=Bonjour {d.get('nom','')},)")
+                with col_c:
+                    if st.button("➕ Créer client Pro", key=f"creer_{d['id']}"):
+                        st.session_state["prefill_nom"]   = d.get("nom","")
+                        st.session_state["prefill_email"] = d.get("email","")
+                        st.info("Allez dans **➕ Nouveau client** pour créer le compte.")
 
 elif "⚙️ Paramètres" in page:
     st.title("⚙️ Paramètres")
