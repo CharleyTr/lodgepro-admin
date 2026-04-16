@@ -49,6 +49,7 @@ with st.sidebar:
         "➕ Nouveau client",
         "🚀 Onboarding Pro",
         "📬 Demandes Pro",
+        "📈 Prospection Pro",
         "🎯 Prospects démo",
         "📧 Emails",
         "💳 Abonnements",
@@ -504,6 +505,175 @@ elif "🚀 Onboarding Pro" in page:
                 update_client(client_sel, {"statut": "actif"})
                 st.success("✅ Client validé et actif !")
                 st.balloons()
+
+elif "📈 Prospection Pro" in page:
+    st.title("📈 Suivi de Prospection Pro")
+    st.caption("Tableau de bord de toutes vos démarches commerciales.")
+
+    # ── Stats rapides ──────────────────────────────────────────────────────
+    try:
+        r = requests.get(f"{SUPABASE_URL}/rest/v1/prospection_pro?select=*&order=date_contact.desc",
+                         headers=HEADERS_SB, timeout=10)
+        prospects = r.json() if r.status_code == 200 else []
+    except:
+        prospects = []
+
+    if prospects:
+        total      = len(prospects)
+        envoyes    = sum(1 for p in prospects if p.get("statut") == "Envoyé")
+        reponses   = sum(1 for p in prospects if p.get("statut") in ("Répondu", "RDV planifié"))
+        rdvs       = sum(1 for p in prospects if p.get("statut") == "RDV planifié")
+        clients    = sum(1 for p in prospects if p.get("statut") == "Client")
+
+        k1, k2, k3, k4, k5 = st.columns(5)
+        k1.metric("📤 Total contactés", total)
+        k2.metric("⏳ Envoyés", envoyes)
+        k3.metric("💬 Réponses", reponses)
+        k4.metric("📅 RDV", rdvs)
+        k5.metric("✅ Clients", clients)
+
+        taux = round(reponses / total * 100, 1) if total > 0 else 0
+        st.progress(taux / 100, text=f"Taux de réponse : {taux}%")
+        st.divider()
+
+    # ── Ajouter un prospect ────────────────────────────────────────────────
+    with st.expander("➕ Ajouter un contact", expanded=False):
+        with st.form("form_add_prospect"):
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                nom_soc   = st.text_input("Société *")
+                contact_p = st.text_input("Prénom contact")
+                contact_n = st.text_input("Nom contact")
+            with c2:
+                email_p   = st.text_input("Email")
+                tel_p     = st.text_input("Téléphone")
+                ville_p   = st.text_input("Ville")
+            with c3:
+                nb_props  = st.text_input("Nb propriétés estimé")
+                canal     = st.selectbox("Canal", ["LinkedIn","Email","Téléphone","Salon","Autre"])
+                statut    = st.selectbox("Statut", ["Envoyé","Vu","Répondu","RDV planifié","Client","Perdu"])
+            notes_p = st.text_area("Notes", height=60)
+            date_rel = st.date_input("Date de relance prévue", value=None)
+
+            if st.form_submit_button("➕ Ajouter", type="primary", use_container_width=True):
+                if not nom_soc:
+                    st.error("Nom de société obligatoire.")
+                else:
+                    data_p = {
+                        "nom_societe":    nom_soc.strip(),
+                        "contact_prenom": contact_p.strip() or None,
+                        "contact_nom":    contact_n.strip() or None,
+                        "email":          email_p.strip() or None,
+                        "telephone":      tel_p.strip() or None,
+                        "ville":          ville_p.strip() or None,
+                        "nb_proprietes":  nb_props.strip() or None,
+                        "canal":          canal,
+                        "statut":         statut,
+                        "notes":          notes_p.strip() or None,
+                        "date_relance":   str(date_rel) if date_rel else None,
+                        "date_contact":   str(pd.Timestamp.now().date()),
+                    }
+                    try:
+                        requests.post(f"{SUPABASE_URL}/rest/v1/prospection_pro",
+                                      headers={**HEADERS_SB, "Prefer": "return=minimal"},
+                                      json=data_p, timeout=10)
+                        st.success("✅ Contact ajouté !")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erreur : {e}")
+
+    # ── Filtres ────────────────────────────────────────────────────────────
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        filtre_statut = st.selectbox("Filtrer par statut",
+            ["Tous","Envoyé","Vu","Répondu","RDV planifié","Client","Perdu"])
+    with col_f2:
+        filtre_canal = st.selectbox("Filtrer par canal",
+            ["Tous","LinkedIn","Email","Téléphone","Salon","Autre"])
+
+    # ── Liste des prospects ────────────────────────────────────────────────
+    if not prospects:
+        st.info("Aucun prospect enregistré. Ajoutez vos premiers contacts.")
+    else:
+        df_pros = pd.DataFrame(prospects)
+        if filtre_statut != "Tous":
+            df_pros = df_pros[df_pros["statut"] == filtre_statut]
+        if filtre_canal != "Tous":
+            df_pros = df_pros[df_pros["canal"] == filtre_canal]
+
+        # Couleur par statut
+        statut_emoji = {
+            "Envoyé": "📤", "Vu": "👁️", "Répondu": "💬",
+            "RDV planifié": "📅", "Client": "✅", "Perdu": "❌"
+        }
+
+        for _, row in df_pros.iterrows():
+            emoji = statut_emoji.get(row.get("statut",""), "•")
+            contact = f"{row.get('contact_prenom','')} {row.get('contact_nom','')}".strip()
+            label = f"{emoji} {row.get('nom_societe','?')}"
+            if contact: label += f" — {contact}"
+            if row.get('ville'): label += f" — {row.get('ville')}"
+            label += f" — {row.get('canal','?')} — {str(row.get('date_contact',''))[:10]}"
+
+            with st.expander(label, expanded=False):
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.markdown(f"**Email :** {row.get('email','—') or '—'}")
+                    st.markdown(f"**Tél :** {row.get('telephone','—') or '—'}")
+                    st.markdown(f"**Ville :** {row.get('ville','—') or '—'}")
+                with c2:
+                    st.markdown(f"**Nb propriétés :** {row.get('nb_proprietes','—') or '—'}")
+                    st.markdown(f"**Canal :** {row.get('canal','—')}")
+                    st.markdown(f"**Relance prévue :** {str(row.get('date_relance','—') or '—')[:10]}")
+                with c3:
+                    st.markdown(f"**Statut actuel :** {row.get('statut','—')}")
+
+                if row.get("notes"):
+                    st.info(f"Notes : {row['notes']}")
+
+                # Mise à jour statut
+                col_s, col_n, col_save = st.columns([2,3,1])
+                with col_s:
+                    new_statut = st.selectbox("Changer statut",
+                        ["Envoyé","Vu","Répondu","RDV planifié","Client","Perdu"],
+                        index=["Envoyé","Vu","Répondu","RDV planifié","Client","Perdu"].index(
+                            row.get("statut","Envoyé")) if row.get("statut") in
+                            ["Envoyé","Vu","Répondu","RDV planifié","Client","Perdu"] else 0,
+                        key=f"st_{row['id']}")
+                with col_n:
+                    new_note = st.text_input("Ajouter une note",
+                                              placeholder="Ex: A rappelé, intéressé...",
+                                              key=f"nt_{row['id']}")
+                with col_save:
+                    st.markdown("&nbsp;", unsafe_allow_html=True)
+                    if st.button("💾", key=f"sv_{row['id']}", help="Enregistrer"):
+                        update_data = {"statut": new_statut}
+                        if new_note.strip():
+                            existing = row.get("notes","") or ""
+                            date_str = pd.Timestamp.now().strftime("%d/%m/%Y")
+                            sep = " | "
+                            update_data["notes"] = (existing + sep + "[" + date_str + "] " + new_note.strip()).strip()
+                        try:
+                            requests.patch(
+                                f"{SUPABASE_URL}/rest/v1/prospection_pro?id=eq.{row['id']}",
+                                headers=HEADERS_SB, json=update_data, timeout=10
+                            )
+                            st.success("✅")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erreur : {e}")
+
+                # Lien email rapide
+                if row.get("email"):
+                    st.markdown(f"[📧 Envoyer un email](mailto:{row['email']}?subject=LodgePro Pro — Suivi)"
+                               f"&nbsp;&nbsp;[🔗 pro.lodgepro.eu](https://pro.lodgepro.eu)")
+
+    # ── Export CSV ─────────────────────────────────────────────────────────
+    if prospects:
+        df_export = pd.DataFrame(prospects)
+        csv = df_export.to_csv(index=False, sep=";", encoding="utf-8-sig").encode()
+        st.download_button("📊 Exporter CSV", csv,
+                           "prospection_lodgepro_pro.csv", "text/csv")
 
 elif "🎯 Prospects démo" in page:
     st.title("🎯 Prospects démo")
