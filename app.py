@@ -52,6 +52,7 @@ with st.sidebar:
         "📈 Prospection Pro",
         "🎯 Prospects démo",
         "📧 Emails",
+        "✉️ Templates emails",
         "💳 Abonnements",
         "⚙️ Paramètres",
     ], label_visibility="collapsed")
@@ -829,6 +830,165 @@ elif "📬 Demandes Pro" in page:
                         st.session_state["prefill_nom"]   = d.get("nom","")
                         st.session_state["prefill_email"] = d.get("email","")
                         st.info("Allez dans **➕ Nouveau client** pour créer le compte.")
+
+elif "✉️ Templates emails" in page:
+    st.title("✉️ Templates emails")
+    st.caption("Copiez-collez ces modèles et adaptez les champs entre [crochets].")
+
+    templates = {
+        "🎯 Réponse prospect Pro (1er contact)": {
+            "sujet": "Votre demande de démo LodgePro Pro — [Prénom Nom]",
+            "corps": """Bonjour [Prénom],
+
+Merci pour votre demande — ravi de vous contacter !
+
+Je serais ravi de vous présenter LodgePro Pro en détail. Je vous propose une démonstration gratuite de 20 minutes en visioconférence :
+
+- [Jour] à [heure] ou [heure]
+- [Jour] à [heure] ou [heure]
+
+En attendant, vous pouvez tester la démo conciergerie (20 propriétés réelles) :
+URL : https://vacances-locations-pro-iqmuq8xq9g3kxgw6n8ogpv.streamlit.app
+Code : pro2026
+
+Je joins également notre fiche produit.
+
+Bien cordialement,
+Charley Trigano
+Fondateur — LodgePro Pro
+pro.lodgepro.eu"""
+        },
+        "🏠 Réponse prospect Particulier (1er contact)": {
+            "sujet": "Votre demande de démo LodgePro — [Prénom Nom]",
+            "corps": """Bonjour [Prénom],
+
+Merci pour votre demande — ravi de vous contacter !
+
+Avec [X] propriétés, LodgePro Particulier sera la solution idéale — dashboard, calendrier, messages WhatsApp automatiques, fiscal LMNP et bien plus, à partir de 19€/mois.
+
+Je vous propose une démonstration gratuite de 20 minutes en visioconférence :
+
+- [Jour] à [heure] ou [heure]
+- [Jour] à [heure] ou [heure]
+
+En attendant, testez librement :
+URL : https://vacances-locations-pro-iqmuq8xq9g3kxgw6n8ogpv.streamlit.app
+Code : demo2026
+
+Bien cordialement,
+Charley Trigano
+Fondateur — LodgePro
+lodgepro.eu"""
+        },
+        "🔄 Relance après démo (sans réponse)": {
+            "sujet": "Suite à notre démonstration LodgePro Pro",
+            "corps": """Bonjour [Prénom],
+
+Je me permets de revenir vers vous suite à notre démonstration du [date].
+
+Avez-vous eu l'occasion de tester la démo avec le code pro2026 ?
+
+Je reste disponible pour répondre à vos questions ou organiser un second échange si vous le souhaitez.
+
+Bien cordialement,
+Charley Trigano — LodgePro Pro
+pro.lodgepro.eu"""
+        },
+        "✅ Bienvenue nouveau client Pro": {
+            "sujet": "Votre espace LodgePro Pro est prêt 🏢",
+            "corps": """Bonjour [Prénom],
+
+Votre abonnement LodgePro Pro est confirmé et votre espace est prêt !
+
+Vos informations de connexion :
+URL : https://vacances-locations-pro-iqmuq8xq9g3kxgw6n8ogpv.streamlit.app
+Code d'accès : [CODE]
+
+Pour bien démarrer :
+1. Connectez-vous avec votre code
+2. Allez dans 🏠 Propriétés et configurez vos biens
+3. Ajoutez votre équipe de ménage dans 🧹 Ménage → Employés
+4. Importez vos réservations existantes
+
+Je vous propose une session de formation de 2h en visioconférence pour tout configurer ensemble. Répondez à cet email avec vos disponibilités.
+
+Bien cordialement,
+Charley Trigano
+Fondateur — LodgePro Pro
+c.trigano@gmail.com
+pro.lodgepro.eu"""
+        },
+        "📊 Envoi fiche produit Pro": {
+            "sujet": "LodgePro Pro — Fiche produit et informations tarifaires",
+            "corps": """Bonjour [Prénom],
+
+Comme convenu, je vous transmets la fiche produit LodgePro Pro en pièce jointe.
+
+En résumé, LodgePro Pro vous permet de :
+• Centraliser toutes vos propriétés dans un dashboard consolidé
+• Gérer votre équipe ménage (pointage → bulletin de paie → DADS)
+• Envoyer automatiquement les rapports mensuels à vos propriétaires
+• Communiquer en WhatsApp/SMS avec traduction IA
+
+Formules à partir de 199€/mois — sans engagement.
+
+N'hésitez pas si vous avez des questions.
+
+Bien cordialement,
+Charley Trigano — LodgePro Pro
+pro.lodgepro.eu"""
+        },
+        "🤝 Partenariat Réseau CLF": {
+            "sujet": "Partenariat LodgePro Pro — Outil de gestion pour vos conciergeries membres",
+            "corps": """Bonjour,
+
+Je me permets de vous contacter car j'ai développé LodgePro Pro, une plateforme de gestion tout-en-un spécialement conçue pour les conciergeries professionnelles.
+
+En tant que réseau représentant des centaines de conciergeries indépendantes en France, je pense qu'un partenariat entre le Réseau CLF et LodgePro Pro pourrait apporter une réelle valeur à vos membres.
+
+LodgePro Pro leur permettrait de :
+• Centraliser toutes leurs propriétés dans un dashboard consolidé
+• Gérer leur équipe de ménage (pointage, bulletins de paie, DADS multi-années)
+• Envoyer automatiquement les rapports mensuels à chaque propriétaire
+• Communiquer en WhatsApp/SMS avec traduction IA en 50 langues
+
+Formules à partir de 199€/mois — sans engagement.
+
+Je serais ravi de vous présenter LodgePro Pro lors de votre prochain événement ou en visioconférence, et d'envisager les modalités d'un partenariat (tarif préférentiel pour vos membres, présentation lors de votre salon annuel, etc.).
+
+Une démo est disponible sur pro.lodgepro.eu (code : pro2026).
+
+Bien cordialement,
+Charley Trigano
+Fondateur — LodgePro Pro
+c.trigano@gmail.com
+pro.lodgepro.eu"""
+        },
+        "📱 Message LinkedIn DM conciergerie": {
+            "sujet": "",
+            "corps": """Bonjour [Prénom],
+
+Combien d'heures par semaine passez-vous à préparer les rapports de vos propriétaires et à gérer les heures de votre équipe de ménage ?
+
+J'ai développé LodgePro Pro pour automatiser exactement ces tâches — rapports mensuels envoyés automatiquement, bulletins de paie générés en 1 clic, dashboard consolidé de toutes vos propriétés.
+
+Démo gratuite disponible (20 propriétés, données réelles) :
+Code pro2026 sur pro.lodgepro.eu
+
+Curieux d'en savoir plus ?
+
+Charley Trigano — LodgePro Pro"""
+        },
+    }
+
+    for titre, template in templates.items():
+        with st.expander(titre):
+            if template["sujet"]:
+                st.markdown("**Sujet :**")
+                st.code(template["sujet"], language=None)
+            st.markdown("**Corps :**")
+            st.code(template["corps"], language=None)
+            st.caption("Cliquez sur le code pour copier · Remplacez les [champs entre crochets]")
 
 elif "⚙️ Paramètres" in page:
     st.title("⚙️ Paramètres")
